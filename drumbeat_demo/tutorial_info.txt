@@ -52,8 +52,8 @@ D=db.gettrajdbns(MD,bn_dot=dotfile,windowlist=[150,300],nprocs=4)
 
 
 ## List the nodes sorted by weighted degree for trajectory 0 ##
-D[0].nodes[D[0].wdsort
+D[0].nodes[D[0].wdsort]
 
-## Plot the top 10 weighted degree nodes ##
+## Plot the top 10 weighted degree nodes for trajectory 0 ('md1.tsv') ##
 plt.figure()
 [plt.plot(x) for x in D[0].wdegree[D[0].wdsort][:10]]
