@@ -5,6 +5,7 @@ DRUMBEAT (Dynamically Resolved Universal Model for BayEsiAn network Tracking): s
 This package was prepared and released along with the publication: [Temporally Resolved and Interpretable Machine Learning Model of GPCR conformational transition]
 
 Tutorial on how to use BaNDyT can be found here: [BaNDyT tutorial](https://github.com/bandyt-group/bandyt-tutorial)
+Tutorial for DRUMBEAT found in the drumbeat_demo folder
 
 **Installing Requirements**
 
