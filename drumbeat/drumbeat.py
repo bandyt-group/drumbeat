@@ -114,7 +114,7 @@ def getMImatrix(traj,numproc):
     D[np.triu_indices_from(D,1)]=MI
     return D+D.T
 
-def applyMIfilter(labels,traj,MImatrix=None,th=0.005,nproc=10):
+def applyMIfilter(labels,traj,MImatrix=None,th=0.005,nproc=4):
     if MImatrix is None:
         MImatrix=getMImatrix(traj.T,nproc)
     indx_pair2remove=np.all(MImatrix<th,1)
@@ -155,10 +155,10 @@ class Traj():
         self.labels=self.labels[I]
         self.traj=self.traj[:,I]
         
-    def compute_MI_matrix(self,numproc=10):
+    def compute_MI_matrix(self,numproc=4):
         self.MI=getMImatrix(self.traj,numproc)
     
-    def MIfeatureselect(self,th,numproc=10):
+    def MIfeatureselect(self,th,numproc=4):
         if self.MI is None:
             self.labels,self.traj,self.MI=applyMIfilter(self.labels,self.traj,MImatrix=self.MI,th=th,nproc=numproc)
             return
@@ -301,7 +301,7 @@ class Scan():
         return np.array([np.amax(i) for i in self.wdegree])
 
     def wdsort(self):
-        return np.flip(np.argsort(self.maxwd()))
+        self.wdsort=np.flip(np.argsort(self.maxwd()))
 
 def scanandsave(scan,nprocs,scoresdir='./masterscan/'):
     scores=[]
@@ -316,10 +316,10 @@ def scanandsave(scan,nprocs,scoresdir='./masterscan/'):
         scores.append(out)
     return np.array(scores)
 
-def gettrajdbns(trajs,bn_dot='./bn.dot',windowlist=[50,100,200,400],save_S=False):
+def gettrajdbns(trajs,bn_dot='./bn.dot',windowlist=[50,100,200,400],nprocs=4,save_S=False):
     D=[Scan(t.traj,t.labels,bn_dot,windowlist=windowlist) for t in trajs]    
     print(f'Scanning trajectories using Universal BN with:\n{len(D[0].nodes)} nodes & {len(D[0].edges)} edges')
-    S=[scanandsave(d,nprocs=25) for d in D]
+    S=[scanandsave(d,nprocs=nprocs) for d in D]
     if save_S:
         picklewrite('S.pkl',S)
         return
@@ -329,7 +329,8 @@ def gettrajdbns(trajs,bn_dot='./bn.dot',windowlist=[50,100,200,400],save_S=False
     Tracs=[getalltracks(Dots[i].converttoheatmap(Outs[i])) for i in range(len(Dots))]
     [d.settracks(Tracs[i]) for i,d in enumerate(D)]
     [d.computewd() for d in D]
-    print('TRBNs completed')
+    [d.wdsort() for d in D]
+    print('Complete!')
     return D
 
 ## Trajectory scan output smoothing ##
@@ -367,5 +368,5 @@ def getalltracks(heatmap,peakth=0.01):
     return alltracks
 
 def scanandupdate(dbn):
-    scores=scanandsave(dbn,nproc=20)
+    scores=scanandsave(dbn,nproc=4)
     scan=Scandot(scores,dbn.windowlist,dbn.data.shape[0])    

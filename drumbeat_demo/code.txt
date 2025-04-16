@@ -1,0 +1,43 @@
+import sys
+sys.path.append('path/to/drumbeat')
+import drumbeat as db
+import bandyt as bd
+
+
+
+## Create trajectory objects from getContacts output files (.tsv) ##
+
+files=['md1.tsv'  ,'md2.tsv'  ,'md3.tsv'  ,'md4.tsv'  ,'md5.tsv']
+
+MD=db.loadtrajensemble(files)
+
+## Feature selection of contacts with MI above threshold ##
+
+[m.MIfeatureselect(th=0.05,numproc=4) for m in MD]
+
+
+## Create universal dataset using set of MD trajectories after feature     ##
+##  selection. Here we use a samplesize which tells the program to sample  ##
+##  from each trajectory                                                   ## 
+
+uMD=db.getuniversaldataset(MD,samplesize=200)
+
+## Use bandyt software to compute Bayesian Network universal graph 
+## Recommended to run on HPC. In publication universal dataset had
+## ~500 contacts and ~15000 frames and took ~3 days with (info on cores) 
+## memory=150 Gb
+
+dt=bd.loader(np.vstack((uMD.labels,uMD.traj.astype(int))))
+srch=bd.search(dt)
+srch.restarts(nrestarts=50)
+srch.dot(filename='universalgraph')
+
+## This part of algoritm can run on standard PC with set number of processors=ncore
+## 
+
+## Obtain DRUMBEAT objects for each trajectory. Input is the ensemble of ##
+## trajectories and the dotfile                                          ## 
+
+dotfile='path/to/dotfile/output/from/bandyt/'
+D=db.gettrajdbns(MD,bn_dot=dotfile,windowlist=[150,300])
+
