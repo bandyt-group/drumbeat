@@ -1,5 +1,8 @@
+## Import th following modules and make sure to append the path to the drumbeat
+    folder ##
+
 import sys
-sys.path.append('path/to/drumbeat')
+sys.path.append('home/drumbeat/src')
 import drumbeat as db
 import bandyt as bd
 
