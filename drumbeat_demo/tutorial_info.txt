@@ -1,8 +1,9 @@
-## Import th following modules and make sure to append the path to the drumbeat
-    folder ##
+## Import th following modules and make sure to append the path to the drumbeat 
+    and bandyt folder ##
 
 import sys
 sys.path.append('home/drumbeat/src')
+sys.path.append('home/bandyt/')
 import drumbeat as db
 import bandyt as bd
 
@@ -12,9 +13,13 @@ import bandyt as bd
 
 files=['md1.tsv'  ,'md2.tsv'  ,'md3.tsv'  ,'md4.tsv'  ,'md5.tsv']
 
+## MD files are 1000 frames long. Loading using the command below will take
+## 15-20 sec
+
 MD=db.loadtrajensemble(files)
 
-## Feature selection of contacts with MI above threshold ##
+## Feature selection of contacts with MI above threshold. Default proccessors 
+##    set to 4 and will take 2-3 min to complete ##
 
 [m.MIfeatureselect(th=0.05,numproc=4) for m in MD]
 
@@ -26,21 +31,29 @@ MD=db.loadtrajensemble(files)
 uMD=db.getuniversaldataset(MD,samplesize=200)
 
 ## Use bandyt software to compute Bayesian Network universal graph 
-## Recommended to run on HPC. In publication universal dataset had
-## ~500 contacts and ~15000 frames and took ~3 days with (info on cores) 
-## memory=150 Gb
+## Demo files with th=0.05 (featureselect) and sampleszie=200 will yield a 
+## universal dataset of size (1000,33). On standard computer the bandyt 
+## computation below should take ~5min
 
 dt=bd.loader(np.vstack((uMD.labels,uMD.traj.astype(int))))
 srch=bd.search(dt)
 srch.restarts(nrestarts=50)
 srch.dot(filename='universalgraph')
 
-## This part of algoritm can run on standard PC with set number of processors=ncore
+## This part of algoritm can run on standard PC with set number of processors=nprocs
 ## 
 
 ## Obtain DRUMBEAT objects for each trajectory. Input is the ensemble of ##
-## trajectories and the dotfile                                          ## 
+## trajectories and the dotfile. Given demo trajectories this step should take 
+## ~1min to complete               ## 
 
 dotfile='path/to/dotfile/output/from/bandyt/'
-D=db.gettrajdbns(MD,bn_dot=dotfile,windowlist=[150,300])
+D=db.gettrajdbns(MD,bn_dot=dotfile,windowlist=[150,300],nprocs=4)
 
+
+## List the nodes sorted by weighted degree for trajectory 0 ##
+D[0].nodes[D[0].wdsort
+
+## Plot the top 10 weighted degree nodes ##
+plt.figure()
+[plt.plot(x) for x in D[0].wdegree[D[0].wdsort][:10]]

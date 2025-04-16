@@ -131,7 +131,7 @@ class Traj():
         self.traj=self.input_traj
         self.labels=self.input_labels   
         self.MI=None
-   
+        
     def restore_input_traj(self):
         self.traj=self.input_traj
         self.labels=self.input_labels
@@ -145,9 +145,13 @@ class Traj():
     def transformResidues(self):
         self.labels,self.traj=transformResidues(self.labels,self.traj)      
 
+    def resandneigh(self):
+        self.transformResidues()
+        self.remove_Neighbor(N=1)    
+
     def remove_singles(self):
-        self.iv=[i for i,x in enumerate(self.traj) if len(set(x))>1]
-        self.traj=self.traj[self.iv]
+        self.iv=[i for i,x in enumerate(self.traj.T) if len(set(x))>1]
+        self.traj=self.traj[:,self.iv]
         self.labels=self.labels[self.iv]
 
     def remove_Neighbor(self,N):
@@ -181,10 +185,14 @@ def gettrajfromcsv(file):
 def loadtrajensemble(files):
     if files[0][-3:]=='tsv':
         T=[gettrajfromtsv(f) for f in files]
-        return [Traj(labels=t[0],traj=t[1]) for t in T]
+        Ts=[Traj(labels=t[0],traj=t[1]) for t in T]
+        [t.resandneigh() for t in Ts]
+        return Ts
     if files[0][-3:]=='csv': 
         T=[gettrajfromcsv(f) for f in files]
-        return [Traj(labels=t[0],traj=t[1]) for t in T]
+        Ts=[Traj(labels=t[0],traj=t[1]) for t in T]
+        [t.resandneigh() for t in Ts]
+        return Ts
     print('File Type not recognized: Expecting .tsv or .csv')
 
 ## Sampling and concatenation - building universal dataset ##
@@ -214,8 +222,12 @@ def sampledata(data,samplesize,ts=None,before=2500,after=2500):
 def getuniversaldataset(trajs,samplesize=200,concat=False,union=False):
     Lint=getlabelintercept([trajs[i].labels for i in range(len(trajs))])
     if concat is False:
-        return Traj(Lint,np.concatenate([sampledata(trajs[i].traj[:,np.in1d(trajs[i].labels,Lint)],samplesize=samplesize) for i in range(len(trajs))]))
-    return Traj(Lint,np.concatenate([np.column_stack((trajs[i].traj[:,np.in1d(trajs[i].labels,Lint)],np.ones(len(trajs[i].traj))*i)) for i in range(len(trajs))]))
+        T=Traj(Lint,np.concatenate([sampledata(trajs[i].traj[:,np.in1d(trajs[i].labels,Lint)],samplesize=samplesize) for i in range(len(trajs))]))
+        T.remove_singles()
+        return T
+    T=Traj(Lint,np.concatenate([np.column_stack((trajs[i].traj[:,np.in1d(trajs[i].labels,Lint)],np.ones(len(trajs[i].traj))*i)) for i in range(len(trajs))]))
+    T.remove_singles()
+    return T
 
 
 
