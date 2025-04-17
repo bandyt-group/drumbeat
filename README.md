@@ -29,11 +29,10 @@ Note: Running DRUMBEAT on large trajectory data will may require much more RAM (
 
 ## Software Requirements
 
-The package development version is tested on *Linux* operating systems. The developmental version of the package has been tested on the following systems:
+The DRUMBEAT package was developed and tested on *Linux* operating systems:
 
 Linux: Arch 6.5.3, Red 
 
-The CRAN package should be compatible with Windows, Mac, and Linux operating systems.
 
 Before setting up the DRUMBEAT  package, users should have the following python packages installed:
 
@@ -51,7 +50,7 @@ No particular installation procedure is necessary. Simply import the DRUMBEAT co
 
 # Demo
 
-For interactive demo of DRUMBEAT, please check out the the [DRUMBEAT Demo](https://github.com/bandyt-group/drumbeat/drumbeat_demo). Within that folder there are 5 test trajectory files along with a jupyter notebook to help in running the demo. Timings for each step in the calculation are also included. 
+For interactive demo of DRUMBEAT, please check out the the [DRUMBEAT Demo](https://github.com/bandyt-group/drumbeat/tree/main/drumbeat_demo). Within that folder there are 5 test trajectory files along with a jupyter notebook to help in running the demo. Timings for each step in the calculation are also included. 
 
 # Instructions for Use 
 
