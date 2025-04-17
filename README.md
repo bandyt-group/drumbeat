@@ -56,7 +56,7 @@ For interactive demo of DRUMBEAT, please check out the the [DRUMBEAT Demo](https
 
 Using DRUMBEAT for MD data is best outlined by looking at the jupyter notebook in the demo folder. A short outline is as follows:
 
-1. Obtain getContacts output using trajectories of interest
+1. Obtain [getContacts](https://github.com/getcontacts/getcontacts) output using trajectories of interest
 2. Load the trajectories and perform any neccessary feature selection
 3. Build a universal dataset using sampling/concatenation
 4. Using BaNDyT software, build the universal graph via the Bayesian network
