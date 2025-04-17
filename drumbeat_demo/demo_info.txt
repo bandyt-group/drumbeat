@@ -1,5 +1,6 @@
-## Import th following modules and make sure to append the path to the drumbeat 
-    and bandyt folder ##
+''' 
+Import th following modules and make sure to append the path to the drumbeat  and bandyt folder 
+'''
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,50 +11,63 @@ import drumbeat as db
 import bandyt as bd
 
 
-## Create trajectory objects from getContacts output files (.tsv) ##
+''' 
+Create trajectory objects from getContacts output files (.tsv)
+'''
 
 files=['md1.tsv'  ,'md2.tsv'  ,'md3.tsv'  ,'md4.tsv'  ,'md5.tsv']
 
-## MD files are 1000 frames long. Loading using the command below will take
-## 15-20 sec
+'''
+MD files are 1000 frames long. Loading using the command below will take 15-20 sec 
+'''
 
 MD=db.loadtrajensemble(files)
 
-## Feature selection of contacts with MI above threshold. Default proccessors 
-##    set to 4 and will take 2-3 min to complete ##
+''' 
+Feature selection of contacts with MI above threshold. Default proccessors set to 4 and will take 2-3 min to complete
+'''
 
 db.applyMIfilter_allMD(MD,th=0.05,numproc=4)
 
-## Create universal dataset using set of MD trajectories after feature     ##
-##  selection. Here we use a samplesize which tells the program to sample  ##
-##  from each trajectory                                                   ## 
+''' 
+Create universal dataset using set of MD trajectories after feature selection. 
+Here we use a samplesize which tells the program to sample from each trajectory.
+'''
 
 uMD=db.getuniversaldataset(MD,samplesize=200)
 
-## Use bandyt software to compute Bayesian Network universal graph 
-## Demo files with th=0.05 (featureselect) and sampleszie=200 will yield a 
-## universal dataset of size (1000,33). On standard computer the bandyt 
-## computation below should take ~5min
+'''
+Use bandyt software to compute Bayesian Network universal graph. 
+Demo files with th=0.05 (featureselect) and sampleszie=200 will yield a universal dataset of size (1000,33). 
+On standard computer the bandyt computation below should take ~5min.
+'''
 
 dt=bd.loader(np.vstack((uMD.labels,uMD.traj.astype(int))))
 srch=bd.search(dt)
 srch.restarts(nrestarts=50)
 srch.dot(filename='universalgraph')
 
-## This part of algoritm can run on standard PC with set number of processors=nprocs
-## 
+'''
+This part of algoritm can run on standard PC with set number of processors=nprocs
+'''
 
-## Obtain DRUMBEAT objects for each trajectory. Input is the ensemble of ##
-## trajectories and the dotfile. Given demo trajectories this step should take 
-## ~1min to complete               ## 
+'''
+Obtain DRUMBEAT objects for each trajectory. Input is the ensemble of trajectories and the dotfile. Given demo trajectories this step should take ~1min to complete 
+'''
 
 dotfile='path/to/dotfile/output/from/bandyt/'
 D=db.gettrajdbns(MD,bn_dot=dotfile,windowlist=[150,300],nprocs=4)
 
 
-## List the nodes sorted by weighted degree for trajectory 0 ##
+'''
+List the nodes sorted by weighted degree for trajectory 0
+'''
+
 D[0].nodes[D[0].wdsort]
 
-## Plot the top 10 weighted degree nodes for trajectory 0 ('md1.tsv') ##
+'''
+Plot the top 10 weighted degree nodes for trajectory 0 ('md1.tsv')
+'''
+
 plt.figure()
 [plt.plot(x) for x in D[0].wdegree[D[0].wdsort][:10]]

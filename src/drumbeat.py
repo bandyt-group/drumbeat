@@ -193,9 +193,9 @@ def loadtrajensemble(files):
         [t.resandneigh() for t in Ts]
         return Ts
     if files[0][-3:]=='csv': 
-        T=[gettrajfromcsv(f) for f in files]
-        Ts=[Traj(labels=t[0],traj=t[1]) for t in T]
-        [t.resandneigh() for t in Ts]
+        Ts=[gettrajfromcsv(f) for f in files]
+        #Ts=[Traj(labels=t[0],traj=t[1]) for t in T]
+        #[t.resandneigh() for t in Ts]
         return Ts
     print('File Type not recognized: Expecting .tsv or .csv')
 
