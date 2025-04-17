@@ -1,12 +1,13 @@
 ## Import th following modules and make sure to append the path to the drumbeat 
     and bandyt folder ##
 
+import numpy as np
+import matplotlib.pyplot as plt
 import sys
 sys.path.append('home/drumbeat/src')
 sys.path.append('home/bandyt/')
 import drumbeat as db
 import bandyt as bd
-
 
 
 ## Create trajectory objects from getContacts output files (.tsv) ##
@@ -21,8 +22,7 @@ MD=db.loadtrajensemble(files)
 ## Feature selection of contacts with MI above threshold. Default proccessors 
 ##    set to 4 and will take 2-3 min to complete ##
 
-[m.MIfeatureselect(th=0.05,numproc=4) for m in MD]
-
+db.applyMIfilter_allMD(MD,th=0.05,numproc=4)
 
 ## Create universal dataset using set of MD trajectories after feature     ##
 ##  selection. Here we use a samplesize which tells the program to sample  ##

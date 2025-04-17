@@ -120,6 +120,10 @@ def applyMIfilter(labels,traj,MImatrix=None,th=0.005,nproc=4):
     indx_pair2remove=np.all(MImatrix<th,1)
     return labels[~indx_pair2remove],traj[:,~indx_pair2remove],MImatrix
 
+def applyMIfilter_allMD(MD,th=0.05,numproc=4):
+    [m.MIfeatureselect(th=th,numproc=numproc) for m in MD]
+    return
+
 
 ## Main Trajectory class ##
 
