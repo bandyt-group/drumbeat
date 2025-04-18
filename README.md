@@ -41,6 +41,7 @@ pip install numpy
 pip install matplotlib
 pip install networkx
 pip install matplotlib.pyplot
+pip install pygraphviz
 ```
 
 
