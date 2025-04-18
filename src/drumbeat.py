@@ -122,6 +122,10 @@ def applyMIfilter(labels,traj,MImatrix=None,th=0.005,nproc=4):
 
 def applyMIfilter_allMD(MD,th=0.05,numproc=4):
     [m.MIfeatureselect(th=th,numproc=numproc) for m in MD]
+    print(f'MI filter complete with threshold = {th} bits.')
+    print('Number of contacts filtered:')
+    for i,m in enumerate(MD):
+        print(f'Trajectory {i}: input contacts - {m.input_labels.shape[0]}; filtered - ',m.input_labels.shape[0]-m.labels.shape[0])
     return
 
 
@@ -191,9 +195,11 @@ def loadtrajensemble(files):
         T=[gettrajfromtsv(f) for f in files]
         Ts=[Traj(labels=t[0],traj=t[1]) for t in T]
         [t.resandneigh() for t in Ts]
+        print('Files successfully loaded!')
         return Ts
     if files[0][-3:]=='csv': 
         Ts=[gettrajfromcsv(f) for f in files]
+        print('Files successfully loaded!')
         #Ts=[Traj(labels=t[0],traj=t[1]) for t in T]
         #[t.resandneigh() for t in Ts]
         return Ts
@@ -228,6 +234,8 @@ def getuniversaldataset(trajs,samplesize=200,concat=False,union=False):
     if concat is False:
         T=Traj(Lint,np.concatenate([sampledata(trajs[i].traj[:,np.in1d(trajs[i].labels,Lint)],samplesize=samplesize) for i in range(len(trajs))]))
         T.remove_singles()
+        print(f'Universal dataset prepared by sampling {samplesize} frames from {len(trajs)} Trajectories')
+        print(f'Universal dataset size: {T.traj.shape[0]} frames and {T.traj.shape[1]} contacts')
         return T
     T=Traj(Lint,np.concatenate([np.column_stack((trajs[i].traj[:,np.in1d(trajs[i].labels,Lint)],np.ones(len(trajs[i].traj))*i)) for i in range(len(trajs))]))
     T.remove_singles()
