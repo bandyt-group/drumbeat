@@ -69,13 +69,15 @@ D[0].nodes[D[0].wdsort]
 Plot the top 10 weighted degree nodes for trajectory 0 ('md1.tsv')
 '''
 
+traj=0
+
 fig,ax=plt.subplots(figsize=(12,8))
-[ax.plot(x) for x in D[0].wdegree[D[0].wdsort][:10]]
+[ax.plot(x) for x in D[traj].wdegree[D[traj].wdsort][:10]]
 
 ax.set_xlabel('Trajectory Frame',fontsize=28)
 ax.set_ylabel('Weighted Degree [bits]',fontsize=24)
 ax.set_title('Top 10 Weighted Degree Contacts',fontsize=30)
-ax.legend(D[0].nodes[D[0].wdsort][:10],fontsize=18,loc=2)
+ax.legend(D[traj].nodes[D[traj].wdsort][:10],fontsize=18,loc=2)
 
 ax.set_ylim(-0.1,1.1)
 ax.tick_params(labelsize=22)
