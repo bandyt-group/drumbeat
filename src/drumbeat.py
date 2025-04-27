@@ -222,17 +222,18 @@ def getuniontrajs(trajs):
     U=np.sort(np.unique(np.concatenate([m.labels for m in trajs])))
     return [unionlabeltraj(m,U) for m in trajs]
 
-def sampledata(data,samplesize,ts=None,before=2500,after=2500):  
+def sampledata(data,samplesize,ts=None,before=2500,after=2500,seed=33):  
+    rng=np.random.default_rng(seed)
     if ts==None:
-        sampindex=np.random.choice(np.arange(data.shape[0]),size=samplesize,replace=True)
+        sampindex=rng.choice(np.arange(data.shape[0]),size=samplesize,replace=True)
     if ts is not None:   
-        sampindex=np.random.choice(np.arange(ts-before,ts+after),size=samplesize,replace=True)
+        sampindex=rng.choice(np.arange(ts-before,ts+after),size=samplesize,replace=True)
     return data[sampindex,:]
 
-def getuniversaldataset(trajs,samplesize=200,concat=False,union=False):
+def getuniversaldataset(trajs,samplesize=200,concat=False,seed=33,union=False):
     Lint=getlabelintercept([trajs[i].labels for i in range(len(trajs))])
     if concat is False:
-        T=Traj(Lint,np.concatenate([sampledata(trajs[i].traj[:,np.in1d(trajs[i].labels,Lint)],samplesize=samplesize) for i in range(len(trajs))]))
+        T=Traj(Lint,np.concatenate([sampledata(trajs[i].traj[:,np.in1d(trajs[i].labels,Lint)],samplesize=samplesize,seed=seed) for i in range(len(trajs))]))
         T.remove_singles()
         print(f'Universal dataset prepared by sampling {samplesize} frames from {len(trajs)} Trajectories')
         print(f'Universal dataset size: {T.traj.shape[0]} frames and {T.traj.shape[1]} contacts')
