@@ -8,6 +8,7 @@ import pickle
 import networkx as nx
 from networkx.drawing.nx_pydot import read_dot
 from networkx.algorithms.moral import moral_graph
+from scipy.sparse import coo_matrix
 import shortenRes as sR
 import tsvloader
 
@@ -145,7 +146,7 @@ class Traj():
         self.labels=self.input_labels
     
     def cuttraj(self,start,end):
-        self.traj=self.traj[:,start:end]
+        self.traj=self.traj[start:end]
 
     def subsettraj(self,interval):
         self.traj=self.traj[::interval]
@@ -363,7 +364,16 @@ def gettrajdbns(trajs,bn_dot='./bn.dot',windowlist=[50,100,200,400],nprocs=4,sav
 def getT(w,timearr):
     return((timearr[:len(timearr)-w][:,None]<=timearr) & (timearr[:len(timearr)-w][:,None]+w>timearr)).astype(int)
 
-def loopoverwindow(time,windows):
+def build_T_sparse(total_time, w):
+    row = np.repeat(np.arange(total_time - w), w)
+    col = np.tile(np.arange(w), total_time - w) + np.repeat(np.arange(total_time - w), w)
+    data = np.ones_like(row, dtype=int)
+    T_sparse = coo_matrix((data, (row, col)), shape=(total_time - w, total_time))
+    return T_sparse.tocsr()
+
+def loopoverwindow(time,windows,sparse=True):
+    if sparse:
+        return [build_T_sparse(time,w) for w in windows]
     tarr=np.arange(time)
     return [getT(w,tarr) for w in windows]
 
@@ -377,9 +387,13 @@ class Scandot():
         self.tracks=tracks
         #print(self.tracks[0].shape,self.T[0].shape)
     def allwinalledge(self,window):
-        u=self.T[window].sum(0)
+        #u=self.T[window].sum(0)
+        #u[-1]=1
+        u=self.T[window].sum(axis=0).A1
         u[-1]=1
-        return np.dot(self.tracks[window],self.T[window])/u
+        dotprod=self.tracks[window] @ self.T[window]
+        return dotprod/u
+#        return np.dot(self.tracks[window],self.T[window])/u
 
     def converttoheatmap(self,dotout):
         return np.array([[dotout[i][j] for i in np.arange(len(self.windows))] for j in range(dotout[0].shape[0])])
