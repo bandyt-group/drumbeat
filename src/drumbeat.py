@@ -284,13 +284,13 @@ def miSpaceScan(data,edgenums,kernal):
 class Scan():
     def __init__(self,data,data_labels,dotfile,moral=False,windowlist=None,kernals=None):
         #Initialize class with input trajectory data and data_labels
-        self.inputtraj=data.astype(int)
-        self.inputlabels=data_labels
+        self.inputlabels=np.sort(data_labels)
+        self.inputtraj=data[:,np.argsort(data_labels)].astype(int)
         # get edges and nodes from dotfile and enumerate edges
         self.nodes,self.edges=getedgefromdot(dotfile,moralize=moral)
-        self.data=data[:,np.in1d(self.inputlabels,self.nodes)].astype(int)
+        self.data=self.inputtraj
         self.datamax=self.data.shape[0]
-        self.nodedict=getlabdict(self.nodes)
+        self.nodedict=getlabdict(self.inputlabels)
         #print(self.data.shape,self.nodes.shape,self.edges.shape)
         self.edgenums=edgeenumerate(self.edges,self.nodedict)
 
@@ -320,7 +320,9 @@ class Scan():
         self.tracks=tracks
 
     def computewd(self):
-        src=[np.where(self.edgenums==i)[0] for i in range(self.nodes.shape[0])]
+        nodedict=getlabdict(self.nodes)
+        edgenums=edgeenumerate(self.edges,nodedict)
+        src=[np.where(edgenums==i)[0] for i in range(self.nodes.shape[0])]
         self.wdegree=np.array([[np.sum(self.tracks[src[i],t]) for t in range(self.tracks.shape[1])] for i in range(self.nodes.shape[0])])
 
     def maxwd(self):
