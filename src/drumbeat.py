@@ -87,6 +87,28 @@ def joinH(i):
     p=np.unique(en,return_counts=True)[1]/len(en)
     return -np.sum(p*np.log2(p))
 
+def maxEntropyBin(x, nbins=3):
+    u, cc = np.unique(x, return_counts=1)
+    y = x.searchsorted(u, sorter=np.argsort(x))[1:]
+    lab = np.zeros_like(x, dtype=int)
+    xsize = x.size
+    y = np.concatenate((y[1:], [x.size])) / x.size
+    cp = np.cumsum(cc) / cc.sum()
+    bins = np.empty(nbins - 1)
+    ii = cp.searchsorted(1 / nbins, 'left')
+    pii = cp[ii]
+    bins[0] = u[ii]
+    ibins = x <= bins[0]
+    lab[ibins] = 0
+    for i in range(1, nbins - 1):
+        n = nbins - i
+        ii = cp.searchsorted((1 + (n - 1) * pii) / n, 'left')
+        pii = cp[ii]
+        bins[i] = u[ii]
+        ibins = (x > bins[i - 1]) & (x <= bins[i])
+        lab[ibins] = i
+    lab[x > bins[-1]] = nbins - 1
+    return lab #,bins
 
 
 ## Trajectory class operations ##
@@ -103,10 +125,10 @@ def transformResidues(labels,traj):
     return slabels,straj
 
 def remove_Neighbors(contacts,N):
-    iplus=np.array([i for i,p in enumerate(contacts) if int(p.split('_')[0][1:])+N !=
- int(p.split('_')[1][1:])])
-    imin=np.array([i for i,p in enumerate(contacts) if int(p.split('_')[0][1:])-N !=
-int(p.split('_')[1][1:])])
+    iplus=np.array([i for i,p in enumerate(contacts) if int(p.split('_')[0][3:])+N !=
+ int(p.split('_')[1][3:])])
+    imin=np.array([i for i,p in enumerate(contacts) if int(p.split('_')[0][3:])-N !=
+int(p.split('_')[1][3:])])
     return np.intersect1d(iplus,imin)
 
 def getMImatrix(traj,numproc):
@@ -126,7 +148,7 @@ def applyMIfilter_allMD(MD,th=0.05,numproc=4):
     print(f'MI filter complete with threshold = {th} bits.')
     print('Number of contacts filtered:')
     for i,m in enumerate(MD):
-        print(f'Trajectory {i}: input contacts - {m.input_labels.shape[0]}; filtered - ',m.input_labels.shape[0]-m.labels.shape[0])
+        print(f'Trajectory {i}: input contacts - {m.input_labels.shape[0]}; filtered - ',m.input_labels.shape[0]-m.labels.shape[0], '; remaining contacts:', m.labels.shape[0])
     return
 
 
@@ -176,8 +198,7 @@ class Traj():
             self.labels,self.traj,self.MI=applyMIfilter(self.labels,self.traj,MImatrix=self.MI,th=th,nproc=numproc)
             return
         self.restore_input_traj()
-        self.transformResidues()
-        self.remove_Neighbor(N=1)
+        #self.remove_Neighbor(N=1)
         self.labels,self.traj,self.MI=applyMIfilter(self.labels,self.traj,MImatrix=self.MI,th=th,nproc=numproc)
 
 ## Trajectory Data Loader from files ##
@@ -188,14 +209,14 @@ def gettrajfromtsv(file,tmax=None):
 def gettrajfromcsv(file):
     out=csvreader(file)
     labels=out[0]
-    traj=out[1:].astype(bool)
+    traj=out[1:]#.astype(bool)
     return Traj(labels,traj)
 
 def loadtrajensemble(files):
     if files[0][-3:]=='tsv':
         T=[gettrajfromtsv(f) for f in files]
         Ts=[Traj(labels=t[0],traj=t[1]) for t in T]
-        [t.resandneigh() for t in Ts]
+        #[t.resandneigh() for t in Ts]
         print('Files successfully loaded!')
         return Ts
     if files[0][-3:]=='csv': 
@@ -344,8 +365,8 @@ def scanandsave(scan,nprocs,scoresdir='./masterscan/'):
         scores.append(out)
     return np.array(scores)
 
-def gettrajdbns(trajs,bn_dot='./bn.dot',windowlist=[50,100,200,400],nprocs=4,save_S=False):
-    D=[Scan(t.traj,t.labels,bn_dot,windowlist=windowlist) for t in trajs]    
+def gettrajdbns(trajs,bn_dot='./bn.dot',windowlist=[50,100,200,400],nprocs=4,moral=False,save_S=False):
+    D=[Scan(t.traj,t.labels,bn_dot,windowlist=windowlist,moral=moral) for t in trajs]    
     print(f'Scanning trajectories using Universal BN with:\n{len(D[0].nodes)} nodes & {len(D[0].edges)} edges')
     S=[scanandsave(d,nprocs=nprocs) for d in D]
     if save_S:
@@ -411,3 +432,77 @@ def getalltracks(heatmap,peakth=0.01):
 def scanandupdate(dbn):
     scores=scanandsave(dbn,nproc=4)
     scan=Scandot(scores,dbn.windowlist,dbn.data.shape[0])    
+
+def quantize_MD(MD,nbins=5):
+    data=np.copy(MD.traj)
+    labels=np.copy(MD.labels)
+    arity=np.array([np.unique(i).size for i in np.copy(MD.traj.T)])
+    dt=dataset(labels,data,arity)
+    dt.quantize_all(bins=nbins)
+    MD.traj=dt.data
+    MD.labels=np.array(dt.variables)
+    return MD
+
+def quantize_MD_all(MDs,nbins=5):
+    return [quantize_MD(m,nbins) for m in MDs]
+
+class dataset:
+    """ Basic methods for preprocessing data """
+
+    def __init__(self, variables, data, arity):
+        self.variables = variables
+        self.data = data
+        self.arity = arity
+
+    def bin_quantize(self, variables=[], bins=3):
+        """ Attempt max entropy binning quantization """
+        min_const_samples_bin_size = 1.0 / bins
+        self.edges = np.zeros((self.arity.size, bins + 1))
+        for i in variables:
+            un_cnt = np.unique(self.data[:, i], return_counts=True)
+            constvals = un_cnt[0][un_cnt[1] > self.data.shape[0] * min_const_samples_bin_size]
+            mask = np.ones(self.data.shape[0], dtype=bool)
+            cv_edges = []
+            if constvals.size > 0:
+                for j, cv in enumerate(constvals):
+                    mask *= (self.data[:, i] != cv)
+                    cv_edges += [np.min(self.data[self.data[:, i] == cv, i])]
+                    self.data[self.data[:, i] == cv, i] = j
+
+            size = np.sum(mask) / (bins - constvals.size)
+            sorted_i = np.argsort(self.data[mask, i])
+            edges = [self.data[mask, i][sorted_i[int(size * num) - 1]]
+                     for num in range(1, bins - constvals.size)]
+            self.edges[i] = cv_edges + [self.data[mask, i][sorted_i[0]]] + edges + \
+                            [self.data[mask, i][sorted_i[-1]]]
+            self.data[mask, i] = np.searchsorted(edges, self.data[mask, i]) + constvals.size
+            arity = len(edges) + 1 + constvals.size
+            if arity == np.unique(self.data[:, i]).size:
+                self.arity[i] = arity
+            else:
+                self.arity[i] = -1
+
+    def range_quantize(self, variables=[], bins=3):
+        """ Uniform range quantization """
+        self.edges = np.zeros((self.arity.size, bins - 1))
+        for i in variables:
+            edges = np.linspace(min(self.data[:, i]), max(self.data[:, i]), bins + 1)[1:-1]
+            self.edges[i] = np.unique(edges)
+            self.data[:, i] = np.searchsorted(self.edges[i], self.data[:, i])
+            self.arity[i] = np.unique(self.data[:, i]).size
+
+    def requantize(self, variables=[]):
+        """ Replaces the sample values with their index """
+        for i in variables:
+            un = np.unique(self.data[:, i]).tolist()
+            for j in un:
+                inds = np.where(self.data[:, i] == j)[0]
+                self.data[inds, i] = un.index(j)
+
+    def quantize_all(self, cond=5, bins=8):
+        """ Discretize everything with arity > cond """
+        self.requantize(np.where(self.arity <= cond)[0])
+        self.bin_quantize(np.where(self.arity > cond)[0], bins)
+        self.data = self.data.astype(int)
+
+
