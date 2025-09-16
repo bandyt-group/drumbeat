@@ -156,16 +156,20 @@ def applyMIfilter_allMD(MD,th=0.05,numproc=4):
 
 class Traj():
     
-    def __init__(self,labels,traj):
+    def __init__(self,labels,traj,quantize=False,nbins=5):
         self.input_traj=traj[:,np.argsort(labels)]
         self.input_labels=labels[np.argsort(labels)]
         self.traj=self.input_traj
         self.labels=self.input_labels   
         self.MI=None
+        self.quantize=quantize
+        self.nbins=nbins
         
     def restore_input_traj(self):
         self.traj=self.input_traj
         self.labels=self.input_labels
+        if self.quantize:
+            self.traj=quantize_MD(self,nbins=self.nbins)
     
     def cuttraj(self,start,end):
         self.traj=self.traj[start:end]
@@ -206,13 +210,13 @@ class Traj():
 def gettrajfromtsv(file,tmax=None):
     return tsvloader.gettrajfromtsv(file)    
 
-def gettrajfromcsv(file):
+def gettrajfromcsv(file,quantize=False,nbins=5):
     out=csvreader(file)
     labels=out[0]
-    traj=out[1:]#.astype(bool)
-    return Traj(labels,traj)
+    traj=out[1:].astype(np.float32)
+    return Traj(labels,traj,quantize,nbins)
 
-def loadtrajensemble(files):
+def loadtrajensemble(files,quantize=False,nbins=5):
     if files[0][-3:]=='tsv':
         T=[gettrajfromtsv(f) for f in files]
         Ts=[Traj(labels=t[0],traj=t[1]) for t in T]
@@ -220,7 +224,9 @@ def loadtrajensemble(files):
         print('Files successfully loaded!')
         return Ts
     if files[0][-3:]=='csv': 
-        Ts=[gettrajfromcsv(f) for f in files]
+        Ts=[gettrajfromcsv(f,quantize,nbins) for f in files]
+        if quantize:
+            Ts=quantize_MD_all(Ts,nbins=nbins)
         print('Files successfully loaded!')
         #Ts=[Traj(labels=t[0],traj=t[1]) for t in T]
         #[t.resandneigh() for t in Ts]
