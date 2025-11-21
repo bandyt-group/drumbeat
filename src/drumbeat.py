@@ -449,10 +449,11 @@ def quantize_MD(MD,nbins=5):
     dt.quantize_all(bins=nbins)
     MD.traj=dt.data
     MD.labels=np.array(dt.variables)
-    return MD
+    #return MD
 
 def quantize_MD_all(MDs,nbins=5):
-    return [quantize_MD(m,nbins) for m in MDs]
+    [quantize_MD(m,nbins) for m in MDs]
+    print(f'MDs quantized with {nbins} bins')
 
 class dataset:
     """ Basic methods for preprocessing data """
