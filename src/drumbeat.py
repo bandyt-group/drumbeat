@@ -181,9 +181,9 @@ class Traj():
         self.labels,self.traj=transformResidues(self.labels,self.traj)      
 
     def resandneigh(self):
-        self.transformResidues()
         self.remove_Neighbor(N=1)    
-
+        self.transformResidues()
+        
     def remove_singles(self):
         self.iv=[i for i,x in enumerate(self.traj.T) if len(set(x))>1]
         self.traj=self.traj[:,self.iv]
@@ -202,8 +202,10 @@ class Traj():
             self.labels,self.traj,self.MI=applyMIfilter(self.labels,self.traj,MImatrix=self.MI,th=th,nproc=numproc)
             return
         self.restore_input_traj()
-        #self.remove_Neighbor(N=1)
         self.labels,self.traj,self.MI=applyMIfilter(self.labels,self.traj,MImatrix=self.MI,th=th,nproc=numproc)
+        #self.remove_Neighbor(N=1)
+        #self.transformResidues()
+
 
 ## Trajectory Data Loader from files ##
 
