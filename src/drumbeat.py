@@ -143,8 +143,19 @@ def applyMIfilter(labels,traj,MImatrix=None,th=0.005,nproc=4):
     indx_pair2remove=np.all(MImatrix<th,1)
     return labels[~indx_pair2remove],traj[:,~indx_pair2remove],MImatrix
 
+def _applyMIfilter(md,th=0.05,nproc=4):
+    if md.MI is None:
+        md.MI=getMImatrix(md.traj.T,nproc)
+    else:
+        md.restore_input_traj()
+    indx_pair2remove=np.all(md.MI<th,1)
+    md.labels=np.copy(md.labels)[~indx_pair2remove]
+    md.traj=np.copy(md.traj)[:,~indx_pair2remove]
+    #return md
+
 def applyMIfilter_allMD(MD,th=0.05,numproc=4):
-    [m.MIfeatureselect(th=th,numproc=numproc) for m in MD]
+    #[m.MIfeatureselect(th=th,numproc=numproc) for m in MD]
+    [_applyMIfilter(md,th=th,nproc=numproc) for md in MD]
     print(f'MI filter complete with threshold = {th} bits.')
     print('Number of contacts filtered:')
     for i,m in enumerate(MD):
@@ -169,7 +180,7 @@ class Traj():
         self.traj=self.input_traj
         self.labels=self.input_labels
         if self.quantize:
-            self.traj=quantize_MD(self,nbins=self.nbins)
+            quantize_MD(self,nbins=self.nbins)
     
     def cuttraj(self,start,end):
         self.traj=self.traj[start:end]
@@ -228,7 +239,7 @@ def loadtrajensemble(files,quantize=False,nbins=5):
     if files[0][-3:]=='csv': 
         Ts=[gettrajfromcsv(f,quantize,nbins) for f in files]
         if quantize:
-            Ts=quantize_MD_all(Ts,nbins=nbins)
+            quantize_MD_all(Ts,nbins=nbins)
         print('Files successfully loaded!')
         #Ts=[Traj(labels=t[0],traj=t[1]) for t in T]
         #[t.resandneigh() for t in Ts]
