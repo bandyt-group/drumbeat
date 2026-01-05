@@ -1,10 +1,23 @@
 import numpy as np
 import sys
 import networkx as nx
-
+import matplotlib.pyplot as plt
+from scipy.signal import find_peaks
 
 ## Input and Output Functions
 
+
+### Top nodes ###
+
+def gettopnodes(D,top=20,cutoff=0.8):
+    u,c=u,c=np.unique_counts(np.concatenate([d.nodes[d.wdsort][:top] for d in D]))
+    return u[np.flip(np.argsort(c))][c[np.flip(np.argsort(c))]>=cutoff*len(D)]
+
+def getedges(D,nodes):
+    return np.unique(np.concatenate([[i for i in D[0].edges if j in i] for j in nodes]))
+
+def nodesfromeds(edges):
+    return np.unique(np.concatenate([i.split('->') for i in edges]))
 
 ## Plotting Functions for tracks and WDegree ##
 
@@ -24,20 +37,15 @@ def plotwd(ax,trbn,nodestoplot,colors=None):
         return
     [ax.plot(i,linewidth=4) for i in trbn.wdegree[np.in1d(trbn.nodes,nodestoplot)]]
     
-
-
-
 def maxargstype(maxargs,iv,interval):
     return np.where((maxargs[iv]>interval[0])&(maxargs[iv]<=interval[1]))[0]
 
 def getednums(edgenames,edge):
     return np.array([i for i,j in enumerate(edgenames) if edge in j])
+## Peaks functions ##
 
-def getnodes(edges,unique=True):
-    if unique==True:
-        return np.unique(np.concatenate(np.array([i.split('->') for i in edges])))
-    return np.concatenate(np.array([i.split('->') for i in edges]))
-
+def findpeaksintrac(trac,thresh=0.2,distance=200):
+    return find_peaks(trac,height=thresh,distance=200)
 
 def peaksinrange(intv,WD,thresh=0.2,inclusive='all'):
     Tb=WD>thresh
@@ -61,17 +69,30 @@ def peaksinrange(intv,WD,thresh=0.2,inclusive='all'):
 
 
 # edges within a peak
-def getedgesinpeak(trbn,contact,time,thresh=None,returnvalues=False):
-    contedges=np.array([ed for ed in trbn.edges if contact in ed])
+def getedgesinpeak(trbn,time,contact=None,edgelist=None,thresh=None,returnvalues=False):
+    if edgelist is None:
+        edgelist=np.array([ed for ed in trbn.edges if contact in ed])
     if thresh is None:
-        thresh=trbn.tracks[np.in1d(trbn.edges,contedges)][:,time].mean()
+        thresh=trbn.tracks[np.in1d(trbn.edges,edgelist)][:,time].mean()
         print('Mean:',thresh)
-    edges=trbn.edges[np.in1d(trbn.edges,contedges)][np.where(trbn.tracks[np.in1d(trbn.edges,contedges)][:,time]>thresh)[0]]
+    edges=trbn.edges[np.in1d(trbn.edges,edgelist)][np.where(trbn.tracks[np.in1d(trbn.edges,edgelist)][:,time]>thresh)[0]]
     if returnvalues:
-        return np.column_stack((edges,trbn.tracks[np.in1d(trbn.edges,edges)][:,time]))
+        return np.column_stack((np.array([i.split('->') for i in edges]),trbn.tracks[np.in1d(trbn.edges,edges)][:,time]))
     return edges
 
+
+# Edges in all peaks ##
+
+def alledgesandindx(D,peaktimes,edgelist,threshold=0.05):
+    alled=np.unique(np.concatenate([getedgesinpeak(D,time=p,edgelist=edgelist,thresh=threshold) for p in peaktimes]))
+    edind=np.array([np.where(D.edges==ed)[0][0] for ed in alled])
+    return alled, edind
+
+
 # Creating network table
+
+def createtable(D,alled,edind,peaks):
+    data=np.column_stack((np.array([i.split('->') for i in alled]),np.round(D.tracks[edind][:,peaks],4)))
 
 def getnodepeaks(Ds,nodes,fixzero=True):
     X=np.array([[np.argmax(Ds[i].wdegree[np.where(Ds[i].nodes==j)])for i in range(len(Ds))] for j in nodes])
@@ -100,6 +121,14 @@ def converttonetworktable(edsandvals):
 
 def dicttonetworktable(tabledic):
     return np.vstack((['source','target','weight'],converttonetworktable(np.column_stack((list(tabledic.keys()),list(tabledic.values()))))))
+
+def graph_from_edge_array(edge_array):
+    G = nx.Graph()
+    for src, tgt, w in edge_array:
+        G.add_edge(src, tgt, weight=float(w))
+    return G
+
+
 
 # degree and betweenness
 def initgraph(nodes):
@@ -163,6 +192,76 @@ def computesma(TMs):
     return [np.convolve(tm,np.ones(500),'valid')/500 for tm in TMs]
 
 
+def network_entropy(weights, eps=1e-12):
+    """
+    Compute Shannon entropy from a list/array of edge weights.
+    Parameters
+    ----------
+    weights : array-like
+        Edge weights (e.g. MI values).
+    eps : float
+        Small value to avoid log(0).
+    """
+    w = np.asarray(weights, dtype=float)
+    w = w[w > 0]  # drop zero-weight edges
+    if len(w) == 0:
+        return 0.0
+    p = w / (w.sum() + eps)
+    return -np.sum(p * np.log(p + eps))
+
+
+def node_entropy(G, weight='weight', eps=1e-12):
+    # weighted degrees
+    degrees = np.array([
+        d for _, d in G.degree(weight=weight)
+    ], dtype=float)
+    degrees = degrees[degrees > 0]
+    if len(degrees) == 0:
+        return 0.0
+    p = degrees / (degrees.sum() + eps)
+    return -np.sum(p * np.log(p + eps))
+
+def plot_weighted_graph(
+    G,
+    node_size=800,
+    edge_scale=5.0,
+    with_labels=True,
+    ax=None
+):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 6))
+    pos = nx.spring_layout(G, seed=1)
+    weights = np.array([d['weight'] for _, _, d in G.edges(data=True)])
+    widths = edge_scale * weights / weights.max()
+    nx.draw_networkx_nodes(
+        G, pos,
+        node_size=node_size,
+        node_color="lightgray",
+        edgecolors="black",
+        ax=ax
+    )
+    nx.draw_networkx_edges(
+        G, pos,
+        width=widths,
+        alpha=0.8,
+        ax=ax
+    )
+    if with_labels:
+        nx.draw_networkx_labels(G, pos, font_size=9, ax=ax)
+    ax.set_axis_off()
+
+def plot_subnetworks_over_time(edge_arrays, timepoints):
+    n = len(timepoints)
+    fig, axes = plt.subplots(1, n, figsize=(5*n, 5))
+    if n == 1:
+        axes = [axes]
+    for ax, t in zip(axes, timepoints):
+        G = dutil.graph_from_edge_array(edge_arrays[t])
+        plot_weighted_graph(G, ax=ax)
+        ax.set_title(f"t = {t}")
+    plt.tight_layout()
+
+
 ## Plot B2AR WD
 #trajs=np.arange(14)
 #axys=[a.twinx() for a in axs]
@@ -181,5 +280,7 @@ def computesma(TMs):
 #[axs.plot(b2_T[i][:-1],y,color='brown',alpha=0.3,linewidth=1) for y in B[i].wdegree[np.in1d(B[i].nodes,top50)]]
 #[axs.plot(b2_T[i][:-1],y,color=Col[j],linewidth=5) for j,y in enumerate(B[i].wdegree[np.in1d(B[i].nodes,Bnodes)][b2_indx])]
 #axs.legend(handles=axs[2].lines[-7:],labels=nodesb3_bw,fontsize=18,loc=1)
+
+
 
 
