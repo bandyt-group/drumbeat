@@ -3,6 +3,7 @@ import sys
 import networkx as nx
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
+import drumbeat as db
 
 ## Input and Output Functions
 
@@ -19,7 +20,47 @@ def getedges(D,nodes):
 def nodesfromeds(edges):
     return np.unique(np.concatenate([i.split('->') for i in edges]))
 
+
+### PCA analysis ###
+
+def subset_pca(D,MD,top_nodes=None):
+    if top_nodes is not None:
+        nodes=nodesfromeds(getedges(D,top_nodes))
+    if top_nodes is None:
+        nodes=nodesfromeds(getedges(D,gettopnodes(D,top=topnodes)))
+    print(f'Building PCA using {nodes.size} nodes')
+    Tc=db.getuniversaldataset(MD,concat=True,union=True)
+    Tall=Tc.traj[:,np.isin(Tc.labels,nodes)].astype(int)
+    Tmean=Tall-Tall.mean(0)
+    u,s,v=np.linalg.svd(Tmean,False)
+    print(f'PCA built using {nodes.size} nodes and {u.shape[0]} frames')
+    return u,s,v
+
+
+def plot_pca_contour(u,pcs=[0,1]):
+    import seaborn as sns
+    g=sns.jointplot(
+       x=u[:,pcs[0]],
+       y=u[:,pcs[1]],
+       kind="kde",        # contour density plot
+       fill=True,         # fill contours
+       cmap="Blues"
+    )
+    return g
 ## Plotting Functions for tracks and WDegree ##
+
+def trajectory_index_ranges(MD):
+    ranges = []
+    start = 0
+
+    for md in MD:
+        n_frames = md.traj.shape[0]
+        end = start + n_frames
+        ranges.append((start, end))
+        start = end
+
+    return np.array(ranges)
+
 
 def plotTM(ax,time=None,tm=None,color='grey'):
     axy=ax.twinx()
@@ -31,12 +72,15 @@ def plotTM(ax,time=None,tm=None,color='grey'):
     axy.tick_params(axis='y',labelsize=20,labelcolor=color)
     return axy
 
-def plotwd(ax,trbn,nodestoplot,colors=None):
+def plotwd(D,nodestoplot,colors=None):
+    fig,ax=plt.subplots(1,1,figsize=(16,9))
     if colors is not None:
-        [ax.plot(w,linewidth=4,color=colors[i]) for i,w in enumerate(trbn.wdegree[np.in1d(trbn.nodes,nodestoplot)])] 
+        [ax.plot(w,linewidth=4,color=colors[i]) for i,w in enumerate(D.wdegree[np.isin(D.nodes,nodestoplot)])] 
         return
-    [ax.plot(i,linewidth=4) for i in trbn.wdegree[np.in1d(trbn.nodes,nodestoplot)]]
-    
+    [ax.plot(i,linewidth=4) for i in D.wdegree[np.isin(D.nodes,nodestoplot)]]
+    ax.legend(D.nodes[np.isin(D.nodes,nodestoplot)],fontsize=24)
+    return fig,ax    
+
 def maxargstype(maxargs,iv,interval):
     return np.where((maxargs[iv]>interval[0])&(maxargs[iv]<=interval[1]))[0]
 
