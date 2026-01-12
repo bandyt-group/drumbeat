@@ -2,7 +2,7 @@ import numpy as np
 import sys
 import networkx as nx
 import matplotlib.pyplot as plt
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks as fp
 import drumbeat as db
 
 ## Input and Output Functions
@@ -19,6 +19,9 @@ def getedges(D,nodes):
 
 def nodesfromeds(edges):
     return np.unique(np.concatenate([i.split('->') for i in edges]))
+
+def get_nodebool(D,topnodes):
+  return np.isin(D.nodes,topnodes)
 
 
 ### PCA analysis ###
@@ -60,9 +63,7 @@ def trajectory_index_ranges(MD):
         end = start + n_frames
         ranges.append((start, end))
         start = end
-
     return np.array(ranges)
-
 
 def plotTM(ax,time=None,tm=None,color='grey'):
     axy=ax.twinx()
@@ -83,15 +84,19 @@ def plotwd(D,nodestoplot,colors=None):
     ax.legend(D.nodes[np.isin(D.nodes,nodestoplot)],fontsize=24)
     return fig,ax    
 
-def maxargstype(maxargs,iv,interval):
-    return np.where((maxargs[iv]>interval[0])&(maxargs[iv]<=interval[1]))[0]
 
-def getednums(edgenames,edge):
-    return np.array([i for i,j in enumerate(edgenames) if edge in j])
 ## Peaks functions ##
 
-def findpeaksintrac(trac,thresh=0.2,distance=200):
-    return find_peaks(trac,height=thresh,distance=200)
+def set_D_peaks(D,topnodes,sum=True,height=1,distance=50):
+  node_bool=get_nodebool(D,topnodes)
+  if sum==True:
+    D.peaks=fp(np.sum(D.wdegree[node_bool],0),height=height,distance=distance)
+    print(f'{D.peaks[0].size} peaks found')
+    return
+  D.peaks=fp(np.max(D.wdegree[node_bool],0),height=height,distance=distance)
+  print(f'{D.peaks[0].size} peaks found')
+  return
+
 
 def peaksinrange(intv,WD,thresh=0.2,inclusive='all'):
     Tb=WD>thresh
@@ -115,15 +120,15 @@ def peaksinrange(intv,WD,thresh=0.2,inclusive='all'):
 
 
 # edges within a peak
-def getedgesinpeak(trbn,time,contact=None,edgelist=None,thresh=None,returnvalues=False):
+def getedgesinpeak(D,time,contact=None,edgelist=None,thresh=None,returnvalues=False):
     if edgelist is None:
-        edgelist=np.array([ed for ed in trbn.edges if contact in ed])
+        edgelist=np.array([ed for ed in D.edges if contact in ed])
     if thresh is None:
-        thresh=trbn.tracks[np.in1d(trbn.edges,edgelist)][:,time].mean()
+        thresh=D.tracks[np.in1d(D.edges,edgelist)][:,time].mean()
         print('Mean:',thresh)
-    edges=trbn.edges[np.in1d(trbn.edges,edgelist)][np.where(trbn.tracks[np.in1d(trbn.edges,edgelist)][:,time]>thresh)[0]]
+    edges=D.edges[np.in1d(D.edges,edgelist)][np.where(D.tracks[np.in1d(D.edges,edgelist)][:,time]>thresh)[0]]
     if returnvalues:
-        return np.column_stack((np.array([i.split('->') for i in edges]),trbn.tracks[np.in1d(trbn.edges,edges)][:,time]))
+        return np.column_stack((np.array([i.split('->') for i in edges]),D.tracks[np.in1d(D.edges,edges)][:,time]))
     return edges
 
 
@@ -136,6 +141,46 @@ def alledgesandindx(D,peaktimes,edgelist,threshold=0.05):
 
 
 # Creating network table
+
+def getnetwork(D,nodes,time,thresh):
+  alleds=getedges(D,nodes)
+  eds=dutil.getedgesinpeak(D,time=time,edgelist=alleds,thresh=thresh)
+  return eds
+
+def weightednetwork(D,eds,time):
+  edind=np.array([np.where(D.edges==ed)[0][0] for ed in eds])
+  return np.column_stack((np.array([i.split('->') for i in eds]),np.round(D.tracks[edind][:,time],4)))
+
+def graph_from_edge_array(edge_array):
+    import networkx as nx
+    G = nx.Graph()
+    for src, tgt, w in edge_array:
+        G.add_edge(src, tgt, weight=float(w))
+    return G
+  
+def timenetwork(D,nodes,time,thresh):
+  eds=getnetwork(D,nodes,time=time,thresh=thresh)
+  wnet=weightednetwork(D,eds,time=time)
+  G=graph_from_edge_array(wnet)
+  return G
+
+def plot_weighted_graph(
+    G,
+    node_size=800,
+    edge_scale=5.0,
+    with_labels=True,
+    ax=None
+):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 12))
+    pos = nx.spring_layout(G, seed=1)
+    weights = np.array([d['weight'] for _, _, d in G.edges(data=True)])
+    widths = edge_scale * weights / weights.max()
+    nx.draw_networkx_nodes(G, pos,node_size=node_size,node_color="lightgray",edgecolors="black",ax=ax)
+    nx.draw_networkx_edges(G, pos, width=widths, alpha=0.8, ax=ax    )
+    if with_labels:
+        nx.draw_networkx_labels(G, pos, font_size=9, ax=ax)
+    ax.set_axis_off() 
 
 def createtable(D,alled,edind,peaks):
     data=np.column_stack((np.array([i.split('->') for i in alled]),np.round(D.tracks[edind][:,peaks],4)))
@@ -307,25 +352,6 @@ def plot_subnetworks_over_time(edge_arrays, timepoints):
         ax.set_title(f"t = {t}")
     plt.tight_layout()
 
-
-## Plot B2AR WD
-#trajs=np.arange(14)
-#axys=[a.twinx() for a in axs]
-#[axys[n].plot(b2_T[i],TM3_B[i],'black',alpha=0.5) for n,i in enumerate(trajs)]
-#[axys[n].plot(b2_T[i][-SMA[i].shape[0]:],SMA[i],'black') for n,i in enumerate(trajs)]
-#[[axs[n].plot(b2_T[j][:-1],y,color='brown',alpha=0.3,linewidth=1) for y in B[j].wdegree[np.in1d(B[j].nodes,top50)]] for n,j in enumerate(trajs)]
-#[[axs[n].plot(b2_T[j][:-1],y,color=Col[i],linewidth=3) for i,y in enumerate(B[j].wdegree[np.in1d(B[j].nodes,Bnodes)][b2_indx])] for n,j in enumerate(trajs)]
-#axs[2].legend(handles=axs[2].lines[-7:],labels=nodesb3_bw,fontsize=18,loc=1)
-
-
-## Plot single trajctory
-#axys=axs.twinx()
-#i=9
-#axys.plot(b2_T[i],TM3_B[i],'black',alpha=0.5)
-#axys.plot(b2_T[i][-SMA[i].shape[0]:],SMA[i],'black')
-#[axs.plot(b2_T[i][:-1],y,color='brown',alpha=0.3,linewidth=1) for y in B[i].wdegree[np.in1d(B[i].nodes,top50)]]
-#[axs.plot(b2_T[i][:-1],y,color=Col[j],linewidth=5) for j,y in enumerate(B[i].wdegree[np.in1d(B[i].nodes,Bnodes)][b2_indx])]
-#axs.legend(handles=axs[2].lines[-7:],labels=nodesb3_bw,fontsize=18,loc=1)
 
 
 
