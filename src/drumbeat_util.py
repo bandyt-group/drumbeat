@@ -144,7 +144,7 @@ def alledgesandindx(D,peaktimes,edgelist,threshold=0.05):
 
 def getnetwork(D,nodes,time,thresh):
   alleds=getedges(D,nodes)
-  eds=dutil.getedgesinpeak(D,time=time,edgelist=alleds,thresh=thresh)
+  eds=getedgesinpeak(D,time=time,edgelist=alleds,thresh=thresh)
   return eds
 
 def weightednetwork(D,eds,time):
