@@ -15,7 +15,7 @@ def gettopnodes(D,top=20,cutoff=0.8):
     return u[np.flip(np.argsort(c))][c[np.flip(np.argsort(c))]>=cutoff*len(D)]
 
 def getedges(D,nodes):
-    return np.unique(np.concatenate([[i for i in D[0].edges if j in i] for j in nodes]))
+    return np.unique(np.concatenate([[i for i in D.edges if j in i] for j in nodes]))
 
 def nodesfromeds(edges):
     return np.unique(np.concatenate([i.split('->') for i in edges]))
