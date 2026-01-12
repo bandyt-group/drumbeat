@@ -46,6 +46,8 @@ def plot_pca_contour(u,pcs=[0,1]):
        fill=True,         # fill contours
        cmap="Blues"
     )
+    g.fig.axes[0].set_xlabel(f'PC{pcs[0]}')
+    g.fig.axes[0].set_ylabel(f'PC{pcs[1]}')
     return g
 ## Plotting Functions for tracks and WDegree ##
 
