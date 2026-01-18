@@ -179,8 +179,8 @@ class Traj():
     def restore_input_traj(self):
         self.traj=self.input_traj
         self.labels=self.input_labels
-        if self.quantize:
-            quantize_MD(self,nbins=self.nbins)
+        #if self.quantize:
+        #    quantize_MD(self,nbins=self.nbins)
     
     def cuttraj(self,start,end):
         self.traj=self.traj[start:end]
