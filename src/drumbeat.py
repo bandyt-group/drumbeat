@@ -272,6 +272,8 @@ def sampledata(data,samplesize,ts=None,before=2500,after=2500,seed=33):
     return data[sampindex,:]
 
 def getuniversaldataset(trajs,samplesize=200,concat=False,seed=33,union=False):
+    if union==True:
+        trajs=getuniontrajs(trajs)
     Lint=getlabelintercept([trajs[i].labels for i in range(len(trajs))])
     if concat is False:
         T=Traj(Lint,np.concatenate([sampledata(trajs[i].traj[:,np.in1d(trajs[i].labels,Lint)],samplesize=samplesize,seed=seed) for i in range(len(trajs))]))
@@ -378,10 +380,11 @@ def scanandsave(scan,nprocs,scoresdir='./masterscan/'):
             out=np.array(runParallel(scan.timescores,W,nprocs))
             scores.append(np.array(out).T)
         return scores
-    for i,kernal in enumerate(scan.kernals):
-        out=np.array(runParallel(scan.stscores,kernal,nprocs))
-        scores.append(out)
-    return np.array(scores)
+    #for i,kernal in enumerate(scan.kernals):
+    out=np.array(runParallel(scan.stscores,scan.kernals,nprocs))
+    #scores.append(out)
+    scores=np.array(out)
+    return scores
 
 def gettrajdbns(trajs,bn_dot='./bn.dot',windowlist=[50,100,200,400],nprocs=4,moral=False,save_S=False):
     D=[Scan(t.traj,t.labels,bn_dot,windowlist=windowlist,moral=moral) for t in trajs]    
@@ -399,6 +402,19 @@ def gettrajdbns(trajs,bn_dot='./bn.dot',windowlist=[50,100,200,400],nprocs=4,mor
     [d.wdsort() for d in D]
     print('Complete!')
     return D
+
+def scanspatial(sp_obj,dotfile,top_gene=None,nproc=1):
+    if top_gene is not None:
+        labels,data=sp_obj.extract_top_N(top_gene,discretized=True)
+        stscan=Scan(data,labels,dotfile=dotfile,kernals=sp_obj.kernals)
+    if top_gene is None:
+        stscan=Scan(sp_obj._gene_expr_discrete,sp_obj.gene_names,dotfile=dotfile,kernals=sp_obj.kernals)
+    scores=scanandsave(stscan,nprocs=nproc)
+    stscan.tracks=scores.T
+    stscan.computewd()
+    stscan.wdsort()
+    return stscan
+
 
 ## Trajectory scan output smoothing ##
 

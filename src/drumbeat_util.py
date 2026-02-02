@@ -347,7 +347,7 @@ def plot_subnetworks_over_time(edge_arrays, timepoints):
     if n == 1:
         axes = [axes]
     for ax, t in zip(axes, timepoints):
-        G = dutil.graph_from_edge_array(edge_arrays[t])
+        G = graph_from_edge_array(edge_arrays[t])
         plot_weighted_graph(G, ax=ax)
         ax.set_title(f"t = {t}")
     plt.tight_layout()
