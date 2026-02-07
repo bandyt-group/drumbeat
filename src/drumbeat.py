@@ -8,6 +8,7 @@ import pickle
 import networkx as nx
 from networkx.drawing.nx_pydot import read_dot
 from networkx.algorithms.moral import moral_graph
+import scipy
 from scipy.sparse import coo_matrix
 import shortenRes as sR
 import tsvloader
@@ -319,6 +320,23 @@ def getscanWindows(datamax,window,shift):
 def miTimeScan(data,edgenums,w):
     return [mi_p([data[w[0]:w[1],i],data[w[0]:w[1],j]]) for i,j in edgenums]
 
+### Spatial Functions ###
+
+def grid_points(xy,resolution):
+    xsize=max(xy[:,0])
+    ysize=max(xy[:,1])
+    xs = np.linspace(0, xsize, resolution)
+    ys = np.linspace(0, ysize, resolution)
+    X, Y = np.meshgrid(xs, ys, indexing='xy')
+    points_xy = np.column_stack([X.ravel(), Y.ravel()])
+    return points_xy
+
+def scangrid(sp_obj,resolution=1):
+    grid_resol=int(resolution*(max(sp_obj.xy[:,1])*max(sp_obj.xy[:,0]))**0.5)
+    grid=grid_points(sp_obj.xy,resolution=grid_resol)
+    pindx=np.unique(np.concatenate(scipy.spatial.KDTree(grid).query_ball_point(sp_obj.xy,1)))
+    return grid[pindx]
+
 def miSpaceScan(data,edgenums,kernal):
     return [mi_p((data[kernal,i],data[kernal,j])) for i,j in edgenums]
 
@@ -403,7 +421,9 @@ def gettrajdbns(trajs,bn_dot='./bn.dot',windowlist=[50,100,200,400],nprocs=4,mor
     print('Complete!')
     return D
 
-def scanspatial(sp_obj,dotfile,top_gene=None,nproc=1):
+def scanspatial(sp_obj,dotfile,top_gene=None,resolution=1,kern_dist=20,nproc=1):
+    sgrid=scangrid(sp_obj,resolution)
+    sp_obj.kernals=sp_obj.ktree.query_ball_point(sgrid,kern_dist)
     if top_gene is not None:
         labels,data=sp_obj.extract_top_N(top_gene,discretized=True)
         stscan=Scan(data,labels,dotfile=dotfile,kernals=sp_obj.kernals)
@@ -413,6 +433,7 @@ def scanspatial(sp_obj,dotfile,top_gene=None,nproc=1):
     stscan.tracks=scores.T
     stscan.computewd()
     stscan.wdsort()
+    stscan.sgrid=sgrid
     return stscan
 
 
