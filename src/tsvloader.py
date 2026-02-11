@@ -39,5 +39,5 @@ def gettrajfromtsv(file,tmax=None):
         tmax=int(getlastline(file).split('\t')[0])+1
     C=getC(file,tmax)
     labels=np.unique((np.concatenate([np.array(list(c)) for c in C])))
-    traj=np.array([np.in1d(labels,np.array(list(c))) for c in C])
+    traj=np.array([np.isin(labels,np.array(list(c))) for c in C])
     return labels,traj
