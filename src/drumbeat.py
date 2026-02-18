@@ -434,6 +434,7 @@ def scanspatial(sp_obj,dotfile,top_gene=None,resolution=1,kern_dist=20,nproc=1):
     stscan.computewd()
     stscan.wdsort()
     stscan.sgrid=sgrid
+    stscan.ktree=scipy.spatial.KDTree(sgrid)
     return stscan
 
 
