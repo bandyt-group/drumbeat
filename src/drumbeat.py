@@ -256,7 +256,7 @@ def getlabelintercept(Labels):
 
 def unionlabeltraj(traj_obj,label_union):
     tst=np.zeros([traj_obj.traj.shape[0],label_union.shape[0]]).T
-    for i,k in enumerate(np.where(np.in1d(label_union,traj_obj.labels)==True)[0]):
+    for i,k in enumerate(np.where(np.isin(label_union,traj_obj.labels)==True)[0]):
         tst[k]=traj_obj.traj[:,i]
     return Traj(label_union,tst.T.astype(bool))
 
@@ -277,12 +277,12 @@ def getuniversaldataset(trajs,samplesize=200,concat=False,seed=33,union=False):
         trajs=getuniontrajs(trajs)
     Lint=getlabelintercept([trajs[i].labels for i in range(len(trajs))])
     if concat is False:
-        T=Traj(Lint,np.concatenate([sampledata(trajs[i].traj[:,np.in1d(trajs[i].labels,Lint)],samplesize=samplesize,seed=seed) for i in range(len(trajs))]))
+        T=Traj(Lint,np.concatenate([sampledata(trajs[i].traj[:,np.isin(trajs[i].labels,Lint)],samplesize=samplesize,seed=seed) for i in range(len(trajs))]))
         T.remove_singles()
         print(f'Universal dataset prepared by sampling {samplesize} frames from {len(trajs)} Trajectories')
         print(f'Universal dataset size: {T.traj.shape[0]} frames and {T.traj.shape[1]} contacts')
         return T
-    T=Traj(Lint,np.concatenate([np.column_stack((trajs[i].traj[:,np.in1d(trajs[i].labels,Lint)],np.ones(len(trajs[i].traj))*i)) for i in range(len(trajs))]))
+    T=Traj(Lint,np.concatenate([np.column_stack((trajs[i].traj[:,np.isin(trajs[i].labels,Lint)],np.ones(len(trajs[i].traj))*i)) for i in range(len(trajs))]))
     T.remove_singles()
     return T
 
@@ -319,6 +319,14 @@ def getscanWindows(datamax,window,shift):
 
 def miTimeScan(data,edgenums,w):
     return [mi_p([data[w[0]:w[1],i],data[w[0]:w[1],j]]) for i,j in edgenums]
+
+def network_entropy_from_weights(weights, eps=1e-12):
+    w = np.asarray(weights, dtype=float)
+    w = w[w > 0]  # drop zero-weight edges
+    if len(w) == 0:
+        return 0.0
+    p = w / (w.sum() + eps)
+    return -np.sum(p * np.log(p + eps))
 
 ### Spatial Functions ###
 
@@ -389,6 +397,12 @@ class Scan():
 
     def wdsort(self):
         self.wdsort=np.flip(np.argsort(self.maxwd()))
+
+    def network_entropy(self,indx=None):
+        if indx is not None:
+            return  
+        self.ents=np.array([network_entropy_from_weights(t) for t in self.tracks.T])
+        
 
 def scanandsave(scan,nprocs,scoresdir='./masterscan/'):
     scores=[]
