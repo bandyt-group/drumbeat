@@ -21,7 +21,10 @@ def nodesfromeds(edges):
     return np.unique(np.concatenate([i.split('->') for i in edges]))
 
 def get_nodebool(D,topnodes):
-  return np.isin(D.nodes,topnodes)
+    return np.isin(D.nodes,topnodes)
+
+def get_edgebool(D,edges):
+    return np.isin(D.edges,edges)
 
 
 ### PCA analysis ###
