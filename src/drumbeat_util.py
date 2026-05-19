@@ -127,11 +127,12 @@ def getedgesinpeak(D,time,contact=None,edgelist=None,thresh=None,returnvalues=Fa
     if edgelist is None:
         edgelist=np.array([ed for ed in D.edges if contact in ed])
     if thresh is None:
-        thresh=D.tracks[np.in1d(D.edges,edgelist)][:,time].mean()
+        thresh=D.tracks[np.isin(D.edges,edgelist)][:,time].mean()
         print('Mean:',thresh)
-    edges=D.edges[np.in1d(D.edges,edgelist)][np.where(D.tracks[np.in1d(D.edges,edgelist)][:,time]>thresh)[0]]
+    edbool=get_edgebool(D,edgelist)
+    edges=D.edges[edbool][np.where(D.tracks[edbool][:,time]>=thresh)[0]]
     if returnvalues:
-        return np.column_stack((np.array([i.split('->') for i in edges]),D.tracks[np.in1d(D.edges,edges)][:,time]))
+        return np.column_stack((np.array([i.split('->') for i in edges]),np.round(D.tracks[np.isin(D.edges,edges)][:,time],5)))
     return edges
 
 
@@ -142,6 +143,14 @@ def alledgesandindx(D,peaktimes,edgelist,threshold=0.05):
     edind=np.array([np.where(D.edges==ed)[0][0] for ed in alled])
     return alled, edind
 
+
+def edgestable_manypeaks(D,times,edgelist,thresh):
+    edbool=get_edgebool(D,edgelist)
+    timetracks=D.tracks[edbool][:,times]
+    indx=np.any(timetracks>=0.01,axis=1)
+    return np.column_stack(([i.split('->') for i in edgelist[indx]],np.round(timetracks[indx],5)))
+    
+    
 
 # Creating network table
 
