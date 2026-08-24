@@ -147,7 +147,7 @@ def alledgesandindx(D,peaktimes,edgelist,threshold=0.05):
 def edgestable_manypeaks(D,times,edgelist,thresh):
     edbool=get_edgebool(D,edgelist)
     timetracks=D.tracks[edbool][:,times]
-    indx=np.any(timetracks>=0.01,axis=1)
+    indx=np.any(timetracks>=thresh,axis=1)
     return np.column_stack(([i.split('->') for i in edgelist[indx]],np.round(timetracks[indx],5)))
     
     
